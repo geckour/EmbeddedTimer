@@ -13,6 +13,7 @@
   const presetsEl = document.getElementById("presets");
   const toggleBtn = document.getElementById("toggle");
   const resetBtn = document.getElementById("reset");
+  const adjustBtns = [...document.querySelectorAll(".adjust")];
 
   const soundEnabled = params.get("sound") !== "0";
 
@@ -119,7 +120,10 @@
       displayEl.value = format(remaining);
     }
     displayEl.readOnly = state.status === "running" || state.status === "paused";
-    progressEl.style.transform = `scaleX(${Math.max(remaining, 0) / state.durationMs})`;
+    progressEl.style.transform = `scaleX(${Math.min(Math.max(remaining, 0) / state.durationMs, 1)})`;
+    for (const btn of adjustBtns) {
+      btn.disabled = adjustedMs(Number(btn.dataset.deltaMin) * 60 * 1000) === null;
+    }
     toggleBtn.textContent = {
       idle: "開始",
       running: "一時停止",
@@ -202,6 +206,26 @@
     reset();
   }
 
+  // 0 以下や上限を超える操作はボタンを無効にして防ぐ
+  function adjustedMs(deltaMs) {
+    const next = currentRemaining() + deltaMs;
+    return next >= 1000 && next <= MAX_MS ? next : null;
+  }
+
+  function adjust(deltaMs) {
+    const next = adjustedMs(deltaMs);
+    if (next === null) return;
+    if (state.status === "idle" || state.status === "done") {
+      setDuration(next);
+      return;
+    }
+    if (state.status === "running") state.endAt += deltaMs;
+    else state.remainingMs = next;
+    state.durationMs = Math.min(Math.max(state.durationMs + deltaMs, next), MAX_MS);
+    save();
+    render();
+  }
+
   function toggle() {
     if (state.status === "running") pause();
     else start();
@@ -265,6 +289,9 @@
 
   toggleBtn.addEventListener("click", toggle);
   resetBtn.addEventListener("click", reset);
+  for (const btn of adjustBtns) {
+    btn.addEventListener("click", () => adjust(Number(btn.dataset.deltaMin) * 60 * 1000));
+  }
 
   function toDurationParam(ms) {
     const total = Math.round(ms / 1000);
