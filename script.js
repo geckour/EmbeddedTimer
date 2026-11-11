@@ -153,20 +153,35 @@
 
   function playAlarm() {
     if (!audioCtx) return;
+    const out = audioCtx.createDynamicsCompressor();
+    out.threshold.value = -12;
+    out.ratio.value = 4;
+    out.connect(audioCtx.destination);
+
     const start = audioCtx.currentTime + 0.05;
-    for (let i = 0; i < 9; i++) {
-      const t = start + Math.floor(i / 3) * 1.0 + (i % 3) * 0.18;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.3, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(t);
-      osc.stop(t + 0.15);
+    for (let group = 0; group < 5; group++) {
+      for (let i = 0; i < 4; i++) {
+        const t = start + group * 0.8 + i * 0.12;
+        beep(out, t, i % 2 === 0 ? 1047 : 1319);
+      }
     }
+  }
+
+  function beep(out, t, freq) {
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    filter.type = "lowpass";
+    filter.frequency.value = 5000;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.005);
+    gain.gain.setValueAtTime(0.3, t + 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    osc.connect(filter).connect(gain).connect(out);
+    osc.start(t);
+    osc.stop(t + 0.11);
   }
 
   function start() {
