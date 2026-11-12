@@ -139,6 +139,7 @@
   }
 
   let audioCtx = null;
+  let alarmOut = null;
 
   // ブラウザは操作のきっかけ無しに音を鳴らせないため、開始ボタンの押下時に準備しておく
   function prepareAudio() {
@@ -153,10 +154,12 @@
 
   function playAlarm() {
     if (!audioCtx) return;
+    stopAlarm();
     const out = audioCtx.createDynamicsCompressor();
     out.threshold.value = -12;
     out.ratio.value = 4;
     out.connect(audioCtx.destination);
+    alarmOut = out;
 
     const start = audioCtx.currentTime + 0.05;
     for (let group = 0; group < 5; group++) {
@@ -184,7 +187,13 @@
     osc.stop(t + 0.11);
   }
 
+  function stopAlarm() {
+    alarmOut?.disconnect();
+    alarmOut = null;
+  }
+
   function start() {
+    stopAlarm();
     prepareAudio();
     if (state.status === "done") state.remainingMs = state.durationMs;
     state.endAt = Date.now() + state.remainingMs;
@@ -201,6 +210,7 @@
   }
 
   function reset() {
+    stopAlarm();
     state.status = "idle";
     state.remainingMs = state.durationMs;
     state.endAt = 0;
