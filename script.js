@@ -158,8 +158,8 @@
     const out = audioCtx.createDynamicsCompressor();
     out.threshold.value = -12;
     out.ratio.value = 4;
-    out.connect(audioCtx.destination);
-    alarmOut = out;
+    alarmOut = audioCtx.createGain();
+    out.connect(alarmOut).connect(audioCtx.destination);
 
     const start = audioCtx.currentTime + 0.05;
     for (let group = 0; group < 5; group++) {
@@ -188,8 +188,14 @@
   }
 
   function stopAlarm() {
-    alarmOut?.disconnect();
+    if (!alarmOut) return;
+    const fade = alarmOut;
     alarmOut = null;
+    const now = audioCtx.currentTime;
+    fade.gain.cancelScheduledValues(now);
+    fade.gain.setValueAtTime(fade.gain.value, now);
+    fade.gain.linearRampToValueAtTime(0, now + 0.05);
+    setTimeout(() => fade.disconnect(), 100);
   }
 
   function start() {
